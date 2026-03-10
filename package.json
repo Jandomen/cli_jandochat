@@ -1,14 +1,17 @@
 {
   "name": "jandochat-cli",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Cliente oficial de terminal para JANDOCHAT - Redes Sociales desde la consola",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "main": "index.js",
   "bin": {
     "jandochat": "./bin/jandochat.js"
   },
   "scripts": {
     "start": "node index.js",
-    "setup": "npm install && npm link"
+    "setup": "npm install && npm link --force"
   },
   "keywords": [
     "cli",
