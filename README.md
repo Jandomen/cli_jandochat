@@ -40,29 +40,7 @@ jandochat
 - **Multimedia Links:** Visualización de enlaces directos a imágenes y videos en el chat.
 - **Búsqueda de Usuarios:** Encuentra amigos en la plataforma.
 
-## 🎨 Banner de JANDOCHAT
 
-```
-   ____                                    ____   _   _      _              
-  / ___| _   _ _ __   __ _  ___  ___  _ __ |  _ \| | | |    (_)_ __   __ _ 
-  \___ \| | | | '_ \ / _` |/ _ \/ _ \| '_ \| |_) | |_| |____| | '_ \ / _` |
-   ___) | |_| | | | | (_| |  __/ (_) | | | |  __/|  _  | |____| | | | | (_| |
-  |____/ \__,_|_| |_|\__, |\___|\___/|_| |_|_|   |_| |_|      |_|_| |_|\__, |
-                      |___/                                          |___/       
-```
-
-## ⚡ Sistema de Administración
-
-```
-╔════════════════════════════════════════════════════════════════════╗
-║                                                                    ║
-║          ⚡  SISTEMA DE ADMINISTRACIÓN TERMINAL v2.1  ⚡           ║
-║    [ Servidor: Connected • Protocol: Encrypted • Status: Ready ]    ║
-║                                                                    ║
-╚════════════════════════════════════════════════════════════════════╝
-
- 🛰️ PUERTA DE ENLACE JANDOSOFT
-```
 
 ## 💬 Comandos de Chat
 

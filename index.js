@@ -314,19 +314,78 @@ async function viewPost(postId) {
 }
 
 async function showPublicProfile(userId) {
-  const spinner = ora('Cargando perfil...').start();
+  const spinner = ora('Cargando perfil detallado...').start();
   try {
     const profile = await apiRequest('GET', `/users/usuarios/${userId}`);
     spinner.succeed();
-    console.log(chalk.cyan('\n' + '╔' + '═'.repeat(40) + '╗'));
-    console.log(chalk.cyan('║') + chalk.bold.white(` PERFIL: ${profile.nombre.padEnd(30)} `) + chalk.cyan('║'));
-    console.log(chalk.cyan('╠' + '═'.repeat(40) + '╣'));
-    console.log(chalk.cyan('║') + chalk.gray(` Email: ${profile.email.padEnd(31)} `) + chalk.cyan('║'));
-    if (profile.bio) console.log(chalk.cyan('║') + chalk.white(` Bio: ${profile.bio.substring(0, 34).padEnd(34)} `) + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + chalk.gray(` Seguidores: ${(profile.seguidores?.length || 0).toString().padEnd(25)} `) + chalk.cyan('║'));
-    console.log(chalk.cyan('╚' + '═'.repeat(40) + '╝\n'));
 
-    await inquirer.prompt([{ type: 'list', name: 'ok', message: 'Presiona Enter para continuar', choices: ['Cerrar'] }]);
+    console.log(chalk.cyan('\n' + '╔' + '═'.repeat(50) + '╗'));
+    console.log(chalk.cyan('║') + chalk.bold.white(` DETALLES DEL USUARIO `.padEnd(48)) + chalk.cyan('║'));
+    console.log(chalk.cyan('╠' + '═'.repeat(50) + '╣'));
+    console.log(chalk.cyan('║') + chalk.white(` Nombre: ${profile.nombre.padEnd(39)} `) + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.gray(` ID: ${profile._id.toString().padEnd(43)} `) + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.gray(` Email: ${profile.email.padEnd(40)} `) + chalk.cyan('║'));
+
+    if (profile.bio) {
+      const bioLines = profile.bio.match(/.{1,40}/g) || [];
+      bioLines.forEach(line => {
+        console.log(chalk.cyan('║') + chalk.white(` Bio: ${line.padEnd(41)} `) + chalk.cyan('║'));
+      });
+    }
+
+    if (profile.ubicacion) console.log(chalk.cyan('║') + chalk.gray(` Ubicación: ${profile.ubicacion.padEnd(36)} `) + chalk.cyan('║'));
+    if (profile.sitioWeb) console.log(chalk.cyan('║') + chalk.blue(` Web: ${profile.sitioWeb.padEnd(42)} `) + chalk.cyan('║'));
+
+    console.log(chalk.cyan('╠' + '═'.repeat(50) + '╣'));
+    console.log(chalk.cyan('║') + chalk.yellow(` Seguidores: ${(profile.seguidores?.length || 0).toString().padEnd(35)} `) + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.yellow(` Siguiendo:  ${(profile.siguiendo?.length || 0).toString().padEnd(35)} `) + chalk.cyan('║'));
+    console.log(chalk.cyan('╚' + '═'.repeat(50) + '╝\n'));
+
+    const { accion } = await inquirer.prompt([{
+      type: 'list',
+      name: 'accion',
+      message: '¿Qué deseas hacer?',
+      choices: [
+        '🚫 Bloquear Usuario',
+        '💬 Enviar Mensaje',
+        'Cerrar'
+      ]
+    }]);
+
+    if (accion === '🚫 Bloquear Usuario') {
+      const sp = ora('Bloqueando...').start();
+      try {
+        await apiRequest('POST', `/users/${userId}/bloquear`);
+        sp.succeed('Usuario bloqueado correctamente.');
+      } catch (e) {
+        sp.fail(e.message);
+      }
+    } else if (accion === '💬 Enviar Mensaje') {
+      const sp = ora('Sincronizando historial de mensajes...').start();
+      try {
+        const convsData = await apiRequest('GET', '/conversaciones');
+        const listaConvs = convsData.conversaciones || convsData;
+
+        const conversacionExistente = listaConvs.find(c =>
+          !c.esGrupo &&
+          c.participantes.length === 2 &&
+          c.participantes.some(p => (p._id || p).toString() === userId.toString())
+        );
+
+        if (conversacionExistente) {
+          sp.succeed('Historial sincronizado');
+          await enterChatRoom(conversacionExistente._id);
+        } else {
+          sp.text = 'Creando nueva conexión...';
+          const res = await apiRequest('POST', '/conversaciones', { participantes: [userId], esGrupo: false });
+          const conv = res.conversacion || res;
+          sp.succeed('Conexión establecida');
+          await enterChatRoom(conv._id);
+        }
+      } catch (e) {
+        sp.fail(e.message);
+      }
+    }
   } catch (e) {
     spinner.fail(e.message);
   }
@@ -444,11 +503,70 @@ async function getProfile() {
 
     if (accion === '👥 Ver Seguidores') await showUserList('SEGUIDORES', '/users/seguidores');
     if (accion === '👤 Ver Siguiendo') await showUserList('SIGUIENDO', '/users/siguiendo');
-    if (accion === '🚫 Ver Usuarios Bloqueados') await showUserList('USUARIOS BLOQUEADOS', '/users/bloqueados');
+    if (accion === '🚫 Ver Usuarios Bloqueados') await manageBlockedUsers();
 
   } catch (error) {
     spinner.fail();
     showError(error.message);
+  }
+}
+
+async function manageBlockedUsers() {
+  const spinner = ora('Cargando usuarios bloqueados...').start();
+  try {
+    const list = await apiRequest('GET', '/users/bloqueados');
+    spinner.succeed();
+
+    console.log(chalk.bold.red('\n🚫 USUARIOS BLOQUEADOS'));
+    if (!list || list.length === 0) {
+      console.log(chalk.yellow('No tienes usuarios bloqueados.\n'));
+      await inquirer.prompt([{ type: 'list', name: 'ok', message: 'Presiona Enter para volver', choices: ['Volver'] }]);
+      return;
+    }
+
+    list.forEach((u, i) => {
+      console.log(chalk.white(`${i + 1}. [ID: ${u._id}] ${u.nombre} ${chalk.gray('(@' + (u.username || 'usuario') + ')')}`));
+    });
+    console.log();
+
+    const { accion } = await inquirer.prompt([{
+      type: 'list',
+      name: 'accion',
+      message: '¿Qué deseas hacer?',
+      choices: [
+        '🔓 Desbloquear un usuario por ID',
+        '💥 Desbloquear a TODOS',
+        'Volver'
+      ]
+    }]);
+
+    if (accion === '🔓 Desbloquear un usuario por ID') {
+      const { id } = await inquirer.prompt([{ type: 'input', name: 'id', message: 'Ingresa el ID del usuario:' }]);
+      if (id) {
+        const sp = ora('Desbloqueando...').start();
+        try {
+          await apiRequest('POST', `/users/${id}/desbloquear`);
+          sp.succeed('Usuario desbloqueado.');
+        } catch (e) {
+          sp.fail(e.message);
+        }
+      }
+    } else if (accion === '💥 Desbloquear a TODOS') {
+      const { confirm } = await inquirer.prompt([{ type: 'confirm', name: 'confirm', message: '¿Seguro que quieres desbloquear a todos?', default: false }]);
+      if (confirm) {
+        const sp = ora('Desbloqueando a todos...').start();
+        try {
+          for (const u of list) {
+            await apiRequest('POST', `/users/${u._id}/desbloquear`);
+          }
+          sp.succeed('Todos los usuarios han sido desbloqueados.');
+        } catch (e) {
+          sp.fail(e.message);
+        }
+      }
+    }
+  } catch (e) {
+    spinner.fail(e.message);
   }
 }
 
@@ -523,37 +641,57 @@ async function updateProfile() {
 }
 
 async function searchUsers() {
-  console.log(chalk.cyan('\n🔍 BUSCAR USUARIOS\n'));
+  console.log(chalk.cyan('\n🔍 BUSQUEDA INTERACTIVA DE USUARIOS\n'));
 
   const { query } = await inquirer.prompt([
     {
       type: 'input',
       name: 'query',
-      message: 'Buscar usuario:'
+      message: 'Ingresa nombre o palabras clave para buscar:'
     }
   ]);
 
   if (!query) return;
 
-  const spinner = ora('Buscando...').start();
+  const spinner = ora('Explorando la red...').start();
 
   try {
     const res = await apiRequest('GET', '/users/buscar', { search: query });
-    const users = res.usuarios || res;
+    const rawUsers = res.usuarios || res;
+    // Evitar usuarios duplicados en los resultados
+    const users = rawUsers.filter((u, index, self) =>
+      index === self.findIndex((t) => t._id === u._id)
+    );
     spinner.succeed();
 
     if (!users || users.length === 0) {
-      console.log(chalk.yellow('No se encontraron usuarios.\n'));
+      console.log(chalk.yellow('No se encontraron coincidencias en este sector.\n'));
       return;
     }
 
-    console.log();
-    users.forEach((u, index) => {
-      console.log(chalk.bold(`${index + 1}. [ID: ${u._id}] ${u.nombre}`));
-      console.log(chalk.gray(`   Email: ${u.email}`));
-      if (u.bio) console.log(chalk.gray(`   Bio: ${u.bio}`));
-      console.log();
-    });
+    const choices = users.map(u => ({
+      name: `${chalk.bold(u.nombre)} ${chalk.gray('(@' + (u.username || 'usuario') + ')')}`,
+      value: u._id
+    }));
+
+    choices.push({ name: chalk.yellow('⬅️ Volver'), value: 'back' });
+
+    const { selectedUserId } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selectedUserId',
+        message: `Se encontraron ${users.length} resultados. Selecciona uno para ver detalles:`,
+        choices: choices,
+        pageSize: 10
+      }
+    ]);
+
+    if (selectedUserId === 'back') return;
+
+    await showPublicProfile(selectedUserId);
+    // Después de ver el perfil, volver a la búsqueda para facilitar ver otros resultados
+    return await searchUsers();
+
   } catch (error) {
     spinner.fail();
     showError(error.message);
@@ -613,24 +751,30 @@ async function enterChatRoom(conversacionId) {
   const onMensajeRecibido = (msg) => {
     const msgConvId = msg.conversacion?._id || msg.conversacion;
     if (msgConvId === conversacion._id) {
+      // Evitar duplicados por ID (si el mensaje ya llegó o se actualizó)
+      if (sessionMessages.some(m => m._id === msg._id)) return;
+
       const emisorId = msg.emisor?._id || msg.emisor;
       const isMe = (emisorId === user._id);
 
       if (isMe) {
-        // Encontrar el último mensaje 'pending' para actualizar su ID
-        for (let i = sessionMessages.length - 1; i >= 0; i--) {
-          if (sessionMessages[i]._id.toString().startsWith('pending-')) {
-            sessionMessages[i]._id = msg._id;
-            break;
-          }
+        // Buscar el mensaje pendiente para actualizar su ID real del servidor
+        const pendingIdx = sessionMessages.findIndex(m =>
+          m._id.toString().startsWith('pending-') &&
+          m.contenido === msg.contenido
+        );
+
+        if (pendingIdx !== -1) {
+          sessionMessages[pendingIdx]._id = msg._id;
+          return; // Ya fue impreso localmente como pendiente
         }
-      } else {
-        sessionMessages.push(msg);
-        process.stdout.clearLine(0);
-        process.stdout.cursorTo(0);
-        printMessage(msg, sessionMessages.length);
-        process.stdout.write(chalk.green('? Tú: '));
       }
+
+      sessionMessages.push(msg);
+      process.stdout.clearLine(0);
+      process.stdout.cursorTo(0);
+      printMessage(msg, sessionMessages.length);
+      process.stdout.write(chalk.green('? Tú: '));
     }
   };
 
@@ -852,15 +996,29 @@ async function startNewChat() {
 
   if (!userId) return;
 
-  const sp = ora('Iniciando conversación...').start();
+  const sp = ora('Sincronizando historial de mensajes...').start();
   try {
-    const res = await apiRequest('POST', '/conversaciones', { participantes: [userId], esGrupo: false });
-    const conv = res.conversacion || res;
-    sp.succeed('¡Conversación lista!');
-    await enterChatRoom(conv._id);
+    const convsData = await apiRequest('GET', '/conversaciones');
+    const listaConvs = convsData.conversaciones || convsData;
+
+    const conversacionExistente = listaConvs.find(c =>
+      !c.esGrupo &&
+      c.participantes.length === 2 &&
+      c.participantes.some(p => (p._id || p).toString() === userId.toString())
+    );
+
+    if (conversacionExistente) {
+      sp.succeed('Historial sincronizado');
+      await enterChatRoom(conversacionExistente._id);
+    } else {
+      sp.text = 'Creando nueva conexión...';
+      const res = await apiRequest('POST', '/conversaciones', { participantes: [userId], esGrupo: false });
+      const conv = res.conversacion || res;
+      sp.succeed('Conexión establecida');
+      await enterChatRoom(conv._id);
+    }
   } catch (error) {
-    sp.fail();
-    showError(error.message);
+    sp.fail(error.message);
   }
 }
 
