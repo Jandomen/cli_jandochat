@@ -405,7 +405,6 @@ async function createPost() {
     showError(error.message);
   }
 }
-
 async function getProfile() {
   console.log(chalk.cyan('\n👤 PERFIL DE USUARIO\n'));
 
@@ -430,9 +429,47 @@ async function getProfile() {
       console.log(chalk.gray(`📅 Miembro desde: ${new Date(profile.createdAt).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`));
     }
     console.log();
+
+    const { accion } = await inquirer.prompt([{
+      type: 'list',
+      name: 'accion',
+      message: '¿Qué deseas ver?',
+      choices: [
+        '👥 Ver Seguidores',
+        '👤 Ver Siguiendo',
+        '🚫 Ver Usuarios Bloqueados',
+        'Volver'
+      ]
+    }]);
+
+    if (accion === '👥 Ver Seguidores') await showUserList('SEGUIDORES', '/users/seguidores');
+    if (accion === '👤 Ver Siguiendo') await showUserList('SIGUIENDO', '/users/siguiendo');
+    if (accion === '🚫 Ver Usuarios Bloqueados') await showUserList('USUARIOS BLOQUEADOS', '/users/bloqueados');
+
   } catch (error) {
     spinner.fail();
     showError(error.message);
+  }
+}
+
+async function showUserList(title, endpoint) {
+  const spinner = ora(`Cargando ${title.toLowerCase()}...`).start();
+  try {
+    const list = await apiRequest('GET', endpoint);
+    spinner.succeed();
+
+    console.log(chalk.bold.cyan(`\n--- ${title} ---`));
+    if (!list || list.length === 0) {
+      console.log(chalk.yellow('Lista vacía.\n'));
+    } else {
+      list.forEach((u, i) => {
+        console.log(chalk.white(`${i + 1}. ${u.nombre} ${chalk.gray('(@' + (u.username || 'usuario') + ')')}`));
+      });
+      console.log();
+    }
+    await inquirer.prompt([{ type: 'list', name: 'ok', message: 'Presiona Enter para volver', choices: ['Volver'] }]);
+  } catch (e) {
+    spinner.fail(e.message);
   }
 }
 
@@ -574,12 +611,26 @@ async function enterChatRoom(conversacionId) {
   console.log(chalk.italic.gray(`Comandos: 'salir' | '/edit <N> <texto>' | '/del <N>'`));
 
   const onMensajeRecibido = (msg) => {
-    if (msg.conversacion === conversacion._id && (msg.emisor._id !== user._id && msg.emisor !== user._id)) {
-      sessionMessages.push(msg);
-      process.stdout.clearLine(0);
-      process.stdout.cursorTo(0);
-      printMessage(msg, sessionMessages.length);
-      process.stdout.write(chalk.green('? Tú: '));
+    const msgConvId = msg.conversacion?._id || msg.conversacion;
+    if (msgConvId === conversacion._id) {
+      const emisorId = msg.emisor?._id || msg.emisor;
+      const isMe = (emisorId === user._id);
+
+      if (isMe) {
+        // Encontrar el último mensaje 'pending' para actualizar su ID
+        for (let i = sessionMessages.length - 1; i >= 0; i--) {
+          if (sessionMessages[i]._id.toString().startsWith('pending-')) {
+            sessionMessages[i]._id = msg._id;
+            break;
+          }
+        }
+      } else {
+        sessionMessages.push(msg);
+        process.stdout.clearLine(0);
+        process.stdout.cursorTo(0);
+        printMessage(msg, sessionMessages.length);
+        process.stdout.write(chalk.green('? Tú: '));
+      }
     }
   };
 
@@ -896,10 +947,44 @@ async function configAccount() {
       message: '¿Qué deseas hacer?',
       choices: [
         '🗑️  Borrar TODAS mis publicaciones',
+        '❌ Eliminar mi cuenta permanentemente',
         'Volver'
       ]
     }
   ]);
+
+  if (opcion === 'Volver') return;
+
+  if (opcion === '❌ Eliminar mi cuenta permanentemente') {
+    const { confirmAction } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'confirmAction',
+      message: chalk.red.bold('⚠ ¿ESTÁS SEGURO? Esta acción no se puede deshacer y perderás TODO.'),
+      default: false
+    }]);
+
+    if (confirmAction) {
+      const { password } = await inquirer.prompt([{
+        type: 'password',
+        name: 'password',
+        message: 'Por seguridad, ingresa tu contraseña para confirmar:',
+        mask: '*'
+      }]);
+
+      const sp = ora('Eliminando cuenta...').start();
+      try {
+        await apiRequest('DELETE', '/users/me', { password });
+        sp.succeed('Tu cuenta ha sido eliminada. Lamentamos verte partir.');
+        token = null;
+        user = null;
+        clearSession();
+        process.exit(0);
+      } catch (e) {
+        sp.fail(e.message);
+      }
+    }
+    return;
+  }
 
   if (opcion === '🗑️  Borrar TODAS mis publicaciones') {
     const { confirmar } = await inquirer.prompt([{

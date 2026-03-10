@@ -32,11 +32,12 @@ jandochat
 
 ## 💎 Características Premium
 
-- **Real-Time Engine:** Chat instantáneo vía WebSockets.
-- **Global Feed:** Explora y publica en el muro desde la terminal.
-- **Jandosoft Encryption:** Conexiones seguras y encriptadas.
+- **Real-Time Engine:** Chat instantáneo vía WebSockets con soporte para edición y eliminación de mensajes.
+- **Global Feed Interactivo:** Explora el muro, ve detalles de posts, reacciona y comenta desde una interfaz navegable.
+- **Centro de Notificaciones Inteligente:** Abre chats o publicaciones directamente desde tus alertas.
+- **Jandosoft Encryption:** Conexiones seguras y encriptadas con banner de administración visual.
 - **Gestión de Perfil:** Edita tu nombre, bio, ubicación y sitio web.
-- **Mensajería Privada:** Chatea con otros usuarios.
+- **Multimedia Links:** Visualización de enlaces directos a imágenes y videos en el chat.
 - **Búsqueda de Usuarios:** Encuentra amigos en la plataforma.
 
 ## 🎨 Banner de JANDOCHAT
@@ -54,14 +55,24 @@ jandochat
 
 ```
 ╔════════════════════════════════════════════════════════════════════╗
-│                                                                    │
-│          ⚡  SISTEMA DE ADMINISTRACIÓN TERMINAL v2.1  ⚡           │
-│    [ Servidor: Connected • Protocol: Encrypted • Status: Ready ]   │
-│                                                                    ║
+║                                                                    ║
+║          ⚡  SISTEMA DE ADMINISTRACIÓN TERMINAL v2.1  ⚡           ║
+║    [ Servidor: Connected • Protocol: Encrypted • Status: Ready ]    ║
+║                                                                    ║
 ╚════════════════════════════════════════════════════════════════════╝
 
  🛰️ PUERTA DE ENLACE JANDOSOFT
 ```
+
+## 💬 Comandos de Chat
+
+Dentro de una conversación, puedes usar los siguientes comandos:
+
+- `salir`: Vuelve al menú anterior.
+- `/edit <N> <texto>`: Edita el mensaje número **N** con el nuevo contenido.
+- `/del <N>`: Elimina el mensaje número **N**.
+
+Los mensajes muestran un índice `[N]` a la izquierda para facilitar estas acciones.
 
 ## 🌐 Servidor
 
@@ -80,16 +91,17 @@ El CLI incluye manejo completo de errores:
 - Errores de red
 - Validación de datos
 
-## 📱 Comandos Disponibles
+## 📱 Menu Principal
 
 Una vez logueado:
-- 📰 Ver Muro - Ver publicaciones
-- ✏️  Crear Publicación - Nueva entrada en el muro
-- 👤 Mi Perfil - Ver tu perfil
-- ✏️  Actualizar Perfil - Editar información
-- 🔍 Buscar Usuarios - Encontrar amigos
-- 💬 Mensajes - Chats privados
-- 🚪 Cerrar Sesión - Salir
+- 📰 **Ver Muro** - Feed interactivo con detalles y reacciones.
+- ✏️  **Crear Publicación** - Nueva entrada en el muro.
+- 👤 **Mi Perfil** - Ver tu perfil personal.
+- ✏️  **Actualizar Perfil** - Editar información de cuenta.
+- 🔍 **Buscar Usuarios** - Encontrar otros perfiles.
+- 💬 **Mensajes** - Chat avanzado (Edición/Eliminación/Multimedia).
+- 🔔 **Notificaciones** - Acceso rápido a eventos.
+- 🚪 **Cerrar Sesión** - Salir de la cuenta.
 
 ---
 
